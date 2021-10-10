@@ -18,52 +18,35 @@ class Bit2c_Client:
         self.base_url = "https://bit2c.co.il/"
 
     def create_hash(self, hash_key: str):
-
         sign = base64.b64encode(hmac.new(self.secret.encode(), hash_key.encode(), hashlib.sha512).digest())
         self.nonce+=1
         time.sleep(1)
         return sign
 
-    def query(self, url: str, method: str, parameters: list, data=None):
+    def query(self, url: str, method: str, params: list):
+        # Add the nonce to the parameters list
+        params["nonce"] = self.nonce
+
+        # Stringify the parameters list (url encoded style)
+        parmas_string = "&".join(params)
         
-        parmas_string = ""
+        # Sign the parameters list and add to the requests header along with the key
+        headers = {
+            "Key": self.key,
+            "Sign": self.create_hash(parmas_string)
+        }
+
+        # Concat the url to the base url
+        url = f"{self.base_url}{url}"
 
         if method == "GET":
-
-            for params in parameters:
-                parmas_string += params + "&"
-
-            parmas_string += f"nonce={self.nonce}"
-
-            url = f"{self.base_url}{url}?{parmas_string}"
-            sign = self.create_hash(parmas_string)
-
-            headers = {
-                "Key": self.key,
-                "Sign": sign
-            }
-            res = requests.get(url, headers=headers)
-            
-            return res
+            # Insert the parameters list into the url
+            return requests.get(f"{url}?{parmas_string}", headers=headers)
 
         if method == "POST":
-            
-            #params to hash should be param1=x&param2=y...&nonce=number
-            parmas_string = ""
-            data["nonce"] = self.nonce
-            url = self.base_url+url
-            for param in parameters:
-                parmas_string += f"{param}&"
-            parmas_string += f"nonce={self.nonce}"
-
-            sign = self.create_hash(parmas_string)
-            headers = {
-                "Key": self.key,
-                "Sign": sign,
-                "Content-Type": "application/x-www-form-urlencoded"
-            }
-            res = requests.post(url, headers=headers, data=data)
-            return res
+            # The content type must be urlencoded for some reason, even though we send JSON data
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            return requests.post(url, headers=headers, data=params)
 
     def fetch_balance(self):
 
