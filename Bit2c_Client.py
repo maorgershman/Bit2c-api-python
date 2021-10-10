@@ -23,12 +23,12 @@ class Bit2c_Client:
         time.sleep(1)
         return sign
 
-    def query(self, url: str, method: str, params: list):
+    def query(self, url: str, method: str, params: dict[str, Any]):
         # Add the nonce to the parameters list
         params["nonce"] = self.nonce
 
         # Stringify the parameters list (url encoded style)
-        parmas_string = "&".join(params)
+        parmas_string = "&".join(f'{k}={v}' for k,v in params.items())
         
         # Sign the parameters list and add to the requests header along with the key
         headers = {
